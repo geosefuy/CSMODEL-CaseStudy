@@ -98,7 +98,11 @@ class CollaborativeFiltering(object):
         # TODO: Compute the cosine similarity between the two parameters.
         # HINT: Use np.sqrt() and pandas.DataFrame.sum() and/or
         # pandas.Series.sum() functions.
+        vec1 = vector1.copy()
+        vec2 = vector2.copy()
         if isinstance(vector1, pd.Series) and isinstance(vector2, pd.Series):
+            vector1 = vector1.drop('index')
+            vector2 = vector2.drop('index')
             mult = vector1 * vector2
             sq1 = vector1 * vector1
             sq2 = vector2 * vector2
@@ -107,21 +111,25 @@ class CollaborativeFiltering(object):
             sq2 = sq2.sum()
             return mult / (np.sqrt(sq1)* np.sqrt(sq2))
         elif isinstance(vector1, pd.DataFrame) and isinstance(vector2, pd.Series):
+            vector1 = vector1.drop('index', axis=1)
+            vector2 = vector2.drop('index')
             mult = vector1 * vector2
             sq1 = vector1 * vector1
             sq2 = vector2 * vector2
             mult = mult.sum(axis=1)
             sq1 = sq1.sum(axis=1)
             sq2 = sq2.sum()
-            return mult / (np.sqrt(sq1)* np.sqrt(sq2))
+            return mult / (np.sqrt(sq1)* np.sqrt(sq2)), vec1['index']
         else:
+            vector1 = vector1.drop('index')
+            vector2 = vector2.drop('index', axis=1)
             mult = vector2 * vector1
             sq1 = vector1 * vector1
             sq2 = vector2 * vector2
             mult = mult.sum(axis=1)
             sq1 = sq1.sum()
             sq2 = sq2.sum(axis=1)
-            return mult / (np.sqrt(sq1)* np.sqrt(sq2))
+            return mult / (np.sqrt(sq1)* np.sqrt(sq2)), vec2['index']
         
     def get_k_similar(self, data, vector):
         """Returns two values - the indices of the top k similar items to the
@@ -143,21 +151,18 @@ class CollaborativeFiltering(object):
         # TODO: Normalize parameters data and vector
         # HINT: Use the normalize_data() function that we have defined in this
         # class
-        data = self.normalize_data(data, self.get_row_mean(data))
-        vector = self.normalize_data(vector, self.get_row_mean(vector))
 
         # TODO: Get the cosine similarity between the normalized data and
         # vector
         # HINT: Use the get_cosine_similarity() function that we have defined
         # in this class
-        cossim = self.get_cosine_similarity(data, vector)
+        cossim, indices = self.get_cosine_similarity(data, vector)
         
         # TODO: Get the INDICES of the top k most similar items based on
         # the cosine similarity values
         # HINT: Use pandas.Series.nlargest() function.
-        largestsim = cossim.nlargest(self.k)
+        largestsim = pd.concat([cossim, indices], axis=1).nlargest(self.k, 0)
         indlargest = largestsim.index
-        
         # TODO: Return 2 values. See function comment
         return indlargest, largestsim
 
